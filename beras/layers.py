@@ -18,18 +18,20 @@ class Dense(Diffable):
         """
         Forward pass for a dense layer! Refer to lecture slides for how this is computed.
         """   
-        self.inputs = x
-
-        return x @ self.w.T + self.b.T    # w*x + b
+        # x  * w + b
+        # (num_samples, input_size) * (input_size, output_size) + (1, output_size)
+        p1 = x @ self.w
+        out = np.apply_along_axis(lambda sample: sample + self.b, 1,p1)
+        return out
 
     def get_input_gradients(self) -> list[Tensor]:
-        input_grad = self.w.T # Gradient wrt inputs
+        input_grad = self.w # Gradient wrt inputs
         return [input_grad] # return as list
 
     def get_weight_gradients(self) -> list[Tensor]:
-        grad_w = self.inputs.T  # Gradient wrt weights
-        grad_b = np.ones_like(self.b)  # Gradient wrt biases
-        return [grad_w, grad_b] # return as list
+        grad_w  = np.expand_dims(self.inputs[0], axis=2)
+        grad_b = np.ones_like(self.b)
+        return [grad_w, grad_b]
     
     @staticmethod
     def _initialize_weight(initializer, input_size, output_size) -> tuple[Variable, Variable]:
@@ -58,13 +60,15 @@ class Dense(Diffable):
             "kaiming",
         ), f"Unknown dense weight initialization strategy '{initializer}' requested"
 
-        bias = Variable(np.zeros((output_size, 1)))  # Bias weights start at zero
+        #### start code ####
+
+        bias = Variable(np.zeros((output_size,)))  # The bias weights should always start at zero.
 
         if initializer == "zero":
-            weights = Variable(np.zeros((output_size, input_size)))
+            weights = Variable(np.zeros((input_size, output_size)))
 
         elif initializer == "normal":
-            weights = Variable(np.random.normal(0, 1, (output_size, input_size)))  # N(0,1)
+            weights = Variable(np.random.normal(0, 1, (input_size, output_size)))  # N(0,1)
 
         elif initializer == "xavier":
             # From tf.keras.initializers.GlorotNormal description:
@@ -72,11 +76,11 @@ class Dense(Diffable):
             # where fan_in is the number of input units in the weight tensor 
             # fan_out is the number of output units in the weight tensor.
             stddev = np.sqrt(2 / (input_size + output_size))
-            weights = Variable(np.random.normal(0, stddev, (output_size, input_size)))
+            weights = Variable(np.random.normal(0, stddev, (input_size, output_size)))
 
 
         elif initializer == "kaiming":
             stddev = np.sqrt(2 / input_size)
-            weights = Variable(np.random.normal(0, stddev, (output_size, input_size)))  
+            weights = Variable(np.random.normal(0, stddev, (input_size, output_size)))  
 
         return weights, bias
