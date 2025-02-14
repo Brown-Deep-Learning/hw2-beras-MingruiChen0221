@@ -17,15 +17,20 @@ class Dense(Diffable):
     def forward(self, x: Tensor) -> Tensor:
         """
         Forward pass for a dense layer! Refer to lecture slides for how this is computed.
-        """
-        return NotImplementedError
+        """   
+        self.inputs = x
+
+        return x @ self.w.T + self.b.T    # w*x + b
 
     def get_input_gradients(self) -> list[Tensor]:
-        return NotImplementedError
+        input_grad = self.w.T # Gradient wrt inputs
+        return [input_grad] # return as list
 
     def get_weight_gradients(self) -> list[Tensor]:
-        return NotImplementedError
-
+        grad_w = self.inputs.T  # Gradient wrt weights
+        grad_b = np.ones_like(self.b)  # Gradient wrt biases
+        return [grad_w, grad_b] # return as list
+    
     @staticmethod
     def _initialize_weight(initializer, input_size, output_size) -> tuple[Variable, Variable]:
         """
@@ -53,4 +58,25 @@ class Dense(Diffable):
             "kaiming",
         ), f"Unknown dense weight initialization strategy '{initializer}' requested"
 
-        return None, None
+        bias = Variable(np.zeros((output_size, 1)))  # Bias weights start at zero
+
+        if initializer == "zero":
+            weights = Variable(np.zeros((output_size, input_size)))
+
+        elif initializer == "normal":
+            weights = Variable(np.random.normal(0, 1, (output_size, input_size)))  # N(0,1)
+
+        elif initializer == "xavier":
+            # From tf.keras.initializers.GlorotNormal description:
+            # Draws samples from a truncated normal distribution centered on 0 with stddev = sqrt(2 / (fan_in + fan_out)) 
+            # where fan_in is the number of input units in the weight tensor 
+            # fan_out is the number of output units in the weight tensor.
+            stddev = np.sqrt(2 / (input_size + output_size))
+            weights = Variable(np.random.normal(0, stddev, (output_size, input_size)))
+
+
+        elif initializer == "kaiming":
+            stddev = np.sqrt(2 / input_size)
+            weights = Variable(np.random.normal(0, stddev, (output_size, input_size)))  
+
+        return weights, bias
